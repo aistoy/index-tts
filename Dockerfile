@@ -30,16 +30,13 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# 先复制依赖声明文件，利用 Docker 缓存
-COPY pyproject.toml uv.lock ./
+# 复制全部项目文件（hatchling 构建 editable 包需要 README.md 等文件）
+COPY . .
 
 # 使用 uv 创建虚拟环境并安装依赖（含 webui extra）
 RUN uv venv /app/.venv --python 3.10 \
     && . /app/.venv/bin/activate \
     && uv sync --all-extras --frozen
-
-# 复制项目源码
-COPY . .
 
 # 下载 IndexTTS2 模型权重到 checkpoints 目录
 # 如果构建时网络不佳，可预先下载模型并挂载到容器中
