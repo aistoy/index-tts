@@ -1,0 +1,7 @@
+.venv
+__pycache__
+*.pyc
+.git
+outputs/
+*.egg-info
+checkpoints/hf_cache
