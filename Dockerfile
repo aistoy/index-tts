@@ -8,8 +8,9 @@
 # 运行命令（GPU）：
 #   docker run --gpus all -p 7860:7860 indextts2
 #
-# 运行命令（CPU，较慢）：
-#   docker run -p 7860:7860 indextts2
+# 挂载已有模型（跳过运行时下载）：
+#   docker run --gpus all -p 7860:7860 \
+#     -v /path/to/checkpoints:/app/checkpoints indextts2
 # ============================================================
 
 FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04 AS base
@@ -39,16 +40,12 @@ RUN uv venv /app/.venv --python 3.10 \
     && . /app/.venv/bin/activate \
     && uv sync --extra webui --frozen
 
-# 下载 IndexTTS2 模型权重到 checkpoints 目录
-# 如果构建时网络不佳，可预先下载模型并挂载到容器中
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    . /app/.venv/bin/activate \
-    && python -c "from huggingface_hub import snapshot_download; snapshot_download('IndexTeam/IndexTTS-2', local_dir='/app/checkpoints')"
-
 # 创建必要目录
-RUN mkdir -p /app/outputs/tasks /app/prompts
+RUN mkdir -p /app/outputs/tasks /app/prompts /app/checkpoints
+
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 7860
 
-# 默认使用 FP16 推理以节省显存，监听所有网卡
-CMD ["/app/.venv/bin/python", "webui.py", "--host", "0.0.0.0", "--port", "7860", "--fp16"]
+ENTRYPOINT ["/app/entrypoint.sh"]
