@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Image tag (default: latest)'
-        required: false
-        default: 'latest'
+        description: 'Image tag (e.g. v2.0.0, 2026-04-07)'
+        required: true
+        default: 'v2.0.0'
 
 env:
   HARBOR_REGISTRY: harborpush.suanleme.cn
-  IMAGE_NAME: indextts2
+  IMAGE_NAME: aistoy/indextts2
 
 jobs:
   build-and-push:
@@ -38,6 +38,6 @@ jobs:
           platforms: linux/amd64
           tags: |
             ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}
-            ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
