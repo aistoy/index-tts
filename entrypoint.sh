@@ -3,7 +3,12 @@ set -e
 
 VENV_DIR="/data/venv"
 CHECKPOINTS_DIR="/data/checkpoints"
+HF_CACHE_DIR="/data/hf_cache"
 APP_DIR="/app"
+
+# HF 子模型缓存持久化到 /data，避免每次重启重复下载
+export HF_HUB_CACHE="$HF_CACHE_DIR"
+mkdir -p "$HF_CACHE_DIR"
 
 # ========== 1. 创建虚拟环境并安装依赖 ==========
 if [ ! -f "$VENV_DIR/bin/python" ]; then
