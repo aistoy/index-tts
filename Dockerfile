@@ -5,15 +5,15 @@
 # 构建命令：
 #   docker build -t indextts2 .
 #
-# 运行命令（GPU）：
-#   docker run --gpus all -p 7860:7860 indextts2
-#
-# 挂载已有模型（跳过运行时下载）：
+# 运行命令（GPU，venv 和模型持久化到宿主机）：
 #   docker run --gpus all -p 7860:7860 \
-#     -v /path/to/checkpoints:/app/checkpoints indextts2
+#     -v /path/to/data:/data indextts2
+#
+# 运行命令（不持久化，每次重建 venv）：
+#   docker run --gpus all -p 7860:7860 indextts2
 # ============================================================
 
-FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04 AS base
+FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -31,20 +31,13 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# 复制全部项目文件（hatchling 构建 editable 包需要 README.md 等文件）
+# 仅复制项目源码（venv 和模型在运行时按需创建/下载）
 COPY . .
 
-# 使用 uv 创建虚拟环境并安装依赖
-# 仅安装 webui extra，跳过 deepspeed（编译需要 nvcc，runtime 镜像不包含）
-RUN uv venv /app/.venv --python 3.10 \
-    && . /app/.venv/bin/activate \
-    && uv sync --extra webui --frozen
-
-# 创建必要目录
-RUN mkdir -p /app/outputs/tasks /app/prompts /app/checkpoints
-
-COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+
+# /data 用于持久化 venv 和 checkpoints（通过 -v 挂载）
+VOLUME ["/data"]
 
 EXPOSE 7860
 
