@@ -44,13 +44,7 @@ RUN . /app/.venv/bin/activate \
 
 # 预下载 HF 子模型（通过镜像）
 RUN . /app/.venv/bin/activate \
-    && python -c "
-from huggingface_hub import snapshot_download
-for m in ['facebook/w2v-bert-2.0', 'amphion/MaskGCT', 'funasr/campplus', 'nvidia/bigvgan_v2_22khz_80band_256x']:
-    print(f'Downloading {m}...')
-    snapshot_download(m)
-    print(f'Done: {m}')
-"
+    && python /app/download_models.py
 
 # 创建必要目录
 RUN mkdir -p /app/outputs/tasks /app/prompts
