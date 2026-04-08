@@ -5,11 +5,7 @@
 # 构建命令：
 #   docker build -t indextts2 .
 #
-# 运行命令（GPU，venv 和模型持久化到宿主机）：
-#   docker run --gpus all -p 7860:7860 \
-#     -v /path/to/data:/data indextts2
-#
-# 运行命令（不持久化，每次重建 venv）：
+# 运行命令（GPU）：
 #   docker run --gpus all -p 7860:7860 indextts2
 # ============================================================
 
@@ -31,14 +27,34 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# 仅复制项目源码（venv 和模型在运行时按需创建/下载）
+# 复制项目源码
 COPY . .
 
-RUN chmod +x /app/entrypoint.sh
+# 创建虚拟环境并安装依赖
+RUN uv venv /app/.venv --python 3.10 \
+    && . /app/.venv/bin/activate \
+    && uv sync --extra webui --frozen
 
-# /data 用于持久化 venv 和 checkpoints（通过 -v 挂载）
-VOLUME ["/data"]
+# HF 镜像（构建时使用，运行时继承）
+ENV HF_ENDPOINT=https://hf-mirror.com
+
+# 下载主模型（ModelScope）
+RUN . /app/.venv/bin/activate \
+    && python -c "from modelscope import snapshot_download; snapshot_download('IndexTeam/IndexTTS-2', local_dir='/app/checkpoints')"
+
+# 预下载 HF 子模型（通过镜像）
+RUN . /app/.venv/bin/activate \
+    && python -c "
+from huggingface_hub import snapshot_download
+for m in ['facebook/w2v-bert-2.0', 'amphion/MaskGCT', 'funasr/campplus', 'nvidia/bigvgan_v2_22khz_80band_256x']:
+    print(f'Downloading {m}...')
+    snapshot_download(m)
+    print(f'Done: {m}')
+"
+
+# 创建必要目录
+RUN mkdir -p /app/outputs/tasks /app/prompts
 
 EXPOSE 7860
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/.venv/bin/python", "webui.py", "--host", "0.0.0.0", "--port", "7860", "--fp16"]
